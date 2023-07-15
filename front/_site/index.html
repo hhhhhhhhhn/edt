@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<script src="//unpkg.com/alpinejs" defer></script>
+	<script src="https://cdn.tailwindcss.com"></script>
+	<script src="/app/assets/deps/markdown-it.min.js"></script>
+	<script src="/app/assets/deps/markdown-it-math.min.js"></script>
+	<title>Front</title>
+	<script>
+		document.addEventListener("alpine:init", () => {
+			Alpine.store("dir", {
+				init() {
+					this.value = localStorage.getItem("dir") || null
+				},
+				value: null,
+				async askForDir() {
+					let dir = await selectDir()
+					if (dir != null) {
+						localStorage.setItem("dir", dir)
+						this.value = dir
+					}
+				}
+			})
+			Alpine.store("filecontent", "")
+		})
+	</script>
+	<script>
+		const md = markdownit().use(markdownitMath)
+	</script>
+	<script>
+		async function setUpReload() {
+			let versionNumber = await (await fetch("/app/version")).text()
+			setInterval(async () => {
+				let newVersion = await (await fetch("/app/version")).text()
+				if (newVersion !== versionNumber) {
+					location.reload()
+				}
+			}, 200)
+		}
+		setUpReload()
+
+		// -> Promise<string|null>
+		async function selectDir() {
+			try {
+				let dir = await (await fetch("/selectdir")).text()
+				return dir
+			} catch {
+				return null
+			}
+		}
+
+		// File = {type: "File"}
+		// Dir = {type: "Dir": children: [string, File|Dir][]}
+		// string -> Promise<Dir|null>
+		async function readDir(path) {
+			try {
+				let value = await (await fetch("/readdir" + path)).json()
+				return value
+			} catch(e) {
+				console.warn(e)
+				return null
+			}
+		}
+
+		// string, string -> Promise<boolean>
+		async function writeFile(path, content) {
+			try {
+				let value = await fetch("/writefile" + path, {
+					method: "POST",
+					body: content,
+				})
+				if (!value.ok) {
+					return false
+				}
+				return true
+			} catch(e) {
+				console.warn(e)
+				return false
+			}
+		}
+
+		// string -> Promise<boolean>
+		async function deleteFile(path) {
+			try {
+				let value = await fetch("/deletefile" + path, {
+					method: "DELETE",
+				})
+				if (!value.ok) {
+					return false
+				}
+				return true
+			} catch(e) {
+				console.warn(e)
+				return false
+			}
+		}
+
+		// string, string -> Promise<boolean>
+		async function renameFile(path, newPath) {
+			try {
+				let file = await readFile(path)
+				if (file == null) {
+					return false
+				}
+				if (writeFile(newPath, file) == false) {
+					return false
+				}
+				if (deleteFile(path) == false) {
+					return false
+				}
+				return true
+			}
+			catch {
+				return false
+			}
+		}
+
+		// Dir -> string[]
+		function flatDir(dir) {
+			let items = dir.value.map(([path, value]) => {
+				if (value.type == "File") {
+					return path
+				} else {
+					return flatDir(value)
+				}
+			})
+			return items.flat(Infinity)
+		}
+
+		// string -> string[]
+		async function getMdFiles(path) {
+			let files = flatDir(await readDir(path))
+			return files.filter(file => file.endsWith(".md"))
+		}
+
+		// string -> Promise<String|null>
+		// TODO: Fail on null
+		async function readFile(path) {
+			try {
+				let res = await fetch("/readfile" + path)
+				if (!res.ok) {
+					return null
+				}
+				return await res.text()
+			} catch(e) {
+				console.warn(e)
+				return null
+			}
+		}
+
+		// string -> string
+		function simplify(str) {
+			return str.toLowerCase().normalize("NFD").replace(/[^a-z]/g, "")
+		}
+	</script>
+	<style type="text/css">
+		.noscrollbar {
+			scrollbar-width: none;
+			-ms-overflow-style: none;
+		}
+		.noscrollbar::-webkit-scrollbar {
+			display: none;
+		}
+	</style>
+</head>
+<body class="overflow-hidden h-screen"><div 
+	    x-data="{selectedFile: null, content: '', changed: false}"
+		x-effect="content = ((await readFile(selectedFile || '')) || '').slice(0, -1)" 
+	>
+		<div 
+			x-data="{width: 50, grabbing: false}"
+			class="flex items-stretch content-stretch w-screen h-screen"
+		>
+			<textarea 
+				x-model="content"
+				class="p-4 resize-none noscrollbar"
+				:style="`width: ${width}vw`"
+				@input="changed = true"
+				placeholder="Press Ctrl+M"
+				@keydown.window.prevent.ctrl.s="changed = false; writeFile(selectedFile, content + '\n')"
+				:disabled="selectedFile == null"
+				id="textarea"
+			></textarea>
+			<div 
+				class="w-1 bg-slate-200 hover:cursor-move"
+				@mousemove.window="if (grabbing) width = $event.clientX * 100 / window.innerWidth"
+				@mousedown="grabbing=true"
+				@mouseup.window="grabbing=false"
+			></div>
+			<div class="bg-red-100 overflow-x-hidden overflow-y-auto noscrollbar" :style="`width: ${100 - width}vw`" class="min-w-0">
+				<style type="text/css" scoped>
+					#rendered * {
+						all: revert;
+					}
+				</style>
+				<div class="px-6" x-html="md.render(content)" id="rendered"></div>
+			</div>
+		</div>
+		
+<div 
+	x-data="{
+		files: [],
+		visible: false,
+		index: 0,
+		query: '',
+		openfile(file) {
+			if(file.trim() == $store.dir.value + '/New File...') {
+				((file) =&gt; {selectedFile = file; changed = false; document.getElementById(&#39;textarea&#39;).focus()})($store.dir.value + '/' + this.query)
+			} 
+			else {
+				((file) =&gt; {selectedFile = file; changed = false; document.getElementById(&#39;textarea&#39;).focus()})(file)
+			}
+		},
+		matching: [],
+	}"
+	x-effect="if(visible) files = await getMdFiles($store.dir.value)"
+	x-show="visible"
+	@keyup.window.ctrl.m="visible = !visible"
+	@keyup.up="if (index > 0) index = index - 1"
+	@keyup.down="index = index + 1"
+	@keyup.enter="$dispatch('openfile')"
+	class="fixed inset-0 w-full h-full backdrop-blur-sm flex items-center justify-center"
+>
+	<div class="bg-slate-200 flex flex-col w-3/5 h-3/5 p-4" @click.outside="visible = false">
+		<div class="flex">
+			<input 
+				class="flex-grow"
+				x-model="query"
+				x-bind:placeholder="`Search ${$store.dir.value}`"
+				x-effect="if(visible) setTimeout(() => $el.focus(), 10)"
+				@input="index = 0"
+			>
+			<p @click="$store.dir.askForDir()" class="hover:cursor-pointer">Change Directory...</p>
+		</div>
+		<div class="flex flex-col overflow-y-auto" x-data x-effect='matching = files.filter(f => simplify(f.slice($store.dir.value.length+1)).includes(simplify(query)))'>
+			<template x-for="(file, i) in matching.concat($store.dir.value + '/New File...')">
+				<div class="flex">
+					<button 
+						x-text="file.slice($store.dir.value.length+1)"
+						@click="openfile(file); visible = false"
+						class="text-left flex-grow"
+						:class="i == index && 'bg-slate-800'"
+						@openfile.window="if(i === index){ openfile(file); visible = false }"
+					></button>
+					<template x-if="!file.includes('New File...')">
+						<div>
+							<button @click="await ((file) =&gt; {let newFile = prompt(&#39;Rename &#39; + file.slice($store.dir.value.length + 1) + &#39; (Or leave empty to cancel)&#39;); if(newFile != &#39;&#39;) {renameFile(file, $store.dir.value + &#39;/&#39; + newFile)} })(file); setTimeout(async () => {files = await getMdFiles($store.dir.value)}, 100)">Rename</button>
+							<button @click="await ((file) =&gt; {if(confirm(&#39;Delete &#39; + file.slice($store.dir.value.length + 1) + &#39;?&#39;)) deleteFile(file)})(file); setTimeout(async () => {files = await getMdFiles($store.dir.value)}, 100)">Delete</button>
+						</div>
+					</template>
+				</div>
+			</template>
+		</div>
+	</div>
+</div>
+
+		
+<div class="fixed top-0 right-0 flex p-2">
+	<p x-text="selectedFile != null ? selectedFile.slice($store.dir.value.length + 1) : &#39;&#39;"></p>
+	<div x-show="changed" class="w-3 h-3 rounded-full bg-black z-10 m-2 ml-3"></div>
+</div>
+
+	</div>
+</body>

@@ -1,0 +1,58 @@
+{% macro searcher(openFile, renameFile, deleteFile) %}
+<div 
+	x-data="{
+		files: [],
+		visible: false,
+		index: 0,
+		query: '',
+		openfile(file) {
+			if(file.trim() == $store.dir.value + '/New File...') {
+				({{ openFile }})($store.dir.value + '/' + this.query)
+			} 
+			else {
+				({{ openFile }})(file)
+			}
+		},
+		matching: [],
+	}"
+	x-effect="if(visible) files = await getMdFiles($store.dir.value)"
+	x-show="visible"
+	@keyup.window.ctrl.m="visible = !visible"
+	@keyup.up="if (index > 0) index = index - 1"
+	@keyup.down="index = index + 1"
+	@keyup.enter="$dispatch('openfile')"
+	class="fixed inset-0 w-full h-full backdrop-blur-sm flex items-center justify-center"
+>
+	<div class="bg-slate-200 flex flex-col w-3/5 h-3/5 p-4" @click.outside="visible = false">
+		<div class="flex">
+			<input 
+				class="flex-grow"
+				x-model="query"
+				x-bind:placeholder="`Search ${$store.dir.value}`"
+				x-effect="if(visible) setTimeout(() => $el.focus(), 10)"
+				@input="index = 0"
+			>
+			<p @click="$store.dir.askForDir()" class="hover:cursor-pointer">Change Directory...</p>
+		</div>
+		<div class="flex flex-col overflow-y-auto" x-data x-effect='matching = files.filter(f => simplify(f.slice($store.dir.value.length+1)).includes(simplify(query)))'>
+			<template x-for="(file, i) in matching.concat($store.dir.value + '/New File...')">
+				<div class="flex">
+					<button 
+						x-text="file.slice($store.dir.value.length+1)"
+						@click="openfile(file); visible = false"
+						class="text-left flex-grow"
+						:class="i == index && 'bg-slate-800'"
+						@openfile.window="if(i === index){ openfile(file); visible = false }"
+					></button>
+					<template x-if="!file.includes('New File...')">
+						<div>
+							<button @click="await ({{ renameFile }})(file); setTimeout(async () => {files = await getMdFiles($store.dir.value)}, 100)">Rename</button>
+							<button @click="await ({{ deleteFile }})(file); setTimeout(async () => {files = await getMdFiles($store.dir.value)}, 100)">Delete</button>
+						</div>
+					</template>
+				</div>
+			</template>
+		</div>
+	</div>
+</div>
+{% endmacro %}

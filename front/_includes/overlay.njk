@@ -1,0 +1,6 @@
+{% macro overlay(changed, selectedFile) %}
+<div class="fixed top-0 right-0 flex p-2">
+	<p x-text="{{ selectedFile }}"></p>
+	<div x-show="{{ changed }}" class="w-3 h-3 rounded-full bg-black z-10 m-2 ml-3"></div>
+</div>
+{% endmacro %}
