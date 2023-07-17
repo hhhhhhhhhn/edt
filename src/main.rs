@@ -63,7 +63,10 @@ async fn readfile(file: PathBuf) -> Option<NamedFile> {
 
 #[post("/writefile/<file..>", data="<data>")]
 async fn writefile(file: PathBuf, data: String) -> Status {
-    match File::create(Path::new("/").join(file)) {
+    let path = Path::new("/").join(file);
+    path.parent().and_then(|folder| fs::create_dir_all(folder).ok());
+
+    match File::create(path) {
         Ok(mut file) => {
             match file.write_all(data.as_bytes()) {
                 Ok(_) => Status::Created,
