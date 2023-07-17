@@ -10,3 +10,4 @@ rocket={ version = "=0.5.0-rc.3", features = ["json"]}
 anyhow="*"
 rfd="*"
 serde="*"
+include_dir="*"

@@ -1,9 +1,11 @@
 #[macro_use] extern crate rocket;
 use std::path::{Path, PathBuf};
 use rocket::fs::NamedFile;
-use rocket::http::Status;
+use rocket::http::{Status, ContentType};
 use rocket::serde::Serialize;
 use rocket::serde::json::Json;
+use include_dir::{include_dir, Dir};
+use std::borrow::Cow;
 use std::fs::File;
 use std::fs;
 use std::io::prelude::*;
@@ -51,9 +53,14 @@ fn deletefile(dir: PathBuf) -> Option<()> {
     return Some(())
 }
 
+static FRONT_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/front/_site");
 #[get("/app/<file..>")]
-async fn app(file: PathBuf) -> Option<NamedFile> {
-    NamedFile::open(Path::new("front/_site").join(file)).await.ok()
+async fn app(file: PathBuf) -> Option<(ContentType, Cow<'static, [u8]>)> {
+    let extension = file.extension()?;
+    let contents = FRONT_DIR.get_file(file.clone())?;
+    let content_type = ContentType::from_extension(extension.to_str()?).unwrap_or(ContentType::Bytes);
+
+    return Some((content_type, Cow::Borrowed(contents.contents())))
 }
 
 #[get("/readfile/<file..>")]
