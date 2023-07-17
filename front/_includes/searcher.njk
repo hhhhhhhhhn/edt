@@ -23,33 +23,33 @@
 	@keyup.enter="$dispatch('openfile')"
 	class="fixed inset-0 w-full h-full backdrop-blur-sm flex items-center justify-center"
 >
-	<div class="bg-slate-200 flex flex-col w-3/5 h-3/5 p-4" @click.outside="visible = false">
+	<div class="bg-slate-600 rounded-md flex flex-col w-3/5 h-3/5 p-4" @click.outside="visible = false">
 		<div class="flex">
 			<input 
-				class="flex-grow"
+				class="flex-grow bg-slate-500 text-slate-800 placeholder-slate-700 font-bold p-1"
 				x-model="query"
 				x-bind:placeholder="`Search ${$store.dir.value}`"
 				x-effect="if(visible) setTimeout(() => $el.focus(), 10)"
 				@input="index = 0"
 			>
-			<p @click="$store.dir.askForDir()" class="hover:cursor-pointer">Change Directory...</p>
+			<p @click="$store.dir.askForDir()" class="hover:cursor-pointer p-1 font-bold text-slate-300 px-3">Change Directory...</p>
 		</div>
-		<div class="flex flex-col overflow-y-auto" x-data x-effect='matching = files.filter(f => simplify(f.slice($store.dir.value.length+1)).includes(simplify(query)))'>
+		<div class="flex flex-col overflow-y-auto py-2" x-data x-effect='matching = files.filter(f => simplify(f.slice($store.dir.value.length+1)).includes(simplify(query)))'>
 			<template x-for="(file, i) in matching.concat($store.dir.value + '/New File...')">
-				<div class="flex">
+				<div class="flex p-1 rounded" :class="i == index && 'bg-slate-800'">
 					<button 
 						x-text="file.slice($store.dir.value.length+1)"
 						@click="openfile(file); visible = false"
-						class="text-left flex-grow"
-						:class="i == index && 'bg-slate-800'"
+						class="text-left flex-grow text-slate-400"
 						@openfile.window="if(i === index){ openfile(file); visible = false }"
 					></button>
 					<template x-if="!file.includes('New File...')">
 						<div>
-							<button @click="await ({{ renameFile }})(file); setTimeout(async () => {files = await getMdFiles($store.dir.value)}, 100)">Rename</button>
-							<button @click="await ({{ deleteFile }})(file); setTimeout(async () => {files = await getMdFiles($store.dir.value)}, 100)">Delete</button>
+							<button class="text-slate-400 px-2" @click="await ({{ renameFile }})(file); setTimeout(async () => {files = await getMdFiles($store.dir.value)}, 100)">Rename</button>
+							<button class="text-slate-400 px-2" @click="await ({{ deleteFile }})(file); setTimeout(async () => {files = await getMdFiles($store.dir.value)}, 100)">Delete</button>
 						</div>
 					</template>
+					<div class="border-b-1 border-slate-700"></div>
 				</div>
 			</template>
 		</div>

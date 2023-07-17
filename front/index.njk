@@ -168,16 +168,18 @@
 	{%- from "_includes/searcher.njk" import searcher -%}
 	{%- from "_includes/overlay.njk" import overlay -%}
 	<div 
-	    x-data="{selectedFile: null, content: '', changed: false}"
+	    x-data="{selectedFile: null, content: '', changed: false, wordCount: 0}"
 		x-effect="content = ((await readFile(selectedFile || '')) || '').slice(0, -1)" 
+		x-init="window.addEventListener('beforeunload', (e) => {if (!$data.changed) return; e.returnValue = 'Unsaved changes!'; return 'Unsaved changes!'})"
 	>
+		<div x-effect="wordCount = content.split(/[\s,\.:;\-_#\\]+/).filter(Boolean).length"></div>
 		<div 
 			x-data="{width: 50, grabbing: false}"
 			class="flex items-stretch content-stretch w-screen h-screen"
 		>
 			<textarea 
 				x-model="content"
-				class="p-4 resize-none noscrollbar"
+				class="p-4 resize-none noscrollbar bg-slate-800 text-slate-400"
 				:style="`width: ${width}vw`"
 				@input="changed = true"
 				placeholder="Press Ctrl+M"
@@ -186,15 +188,19 @@
 				id="textarea"
 			></textarea>
 			<div 
-				class="w-1 bg-slate-200 hover:cursor-move"
+				class="w-1 bg-slate-600 hover:cursor-move"
 				@mousemove.window="if (grabbing) width = $event.clientX * 100 / window.innerWidth"
 				@mousedown="grabbing=true"
 				@mouseup.window="grabbing=false"
 			></div>
-			<div class="bg-red-100 overflow-x-hidden overflow-y-auto noscrollbar" :style="`width: ${100 - width}vw`" class="min-w-0">
+			<div class="bg-slate-700 overflow-x-hidden overflow-y-auto noscrollbar" :style="`width: ${100 - width}vw`" class="min-w-0">
 				<style type="text/css" scoped>
 					#rendered * {
 						all: revert;
+						color: #94a3b8; /* Slate 500 */
+					}
+					#rendered h1, #rendered h2, #rendered h3, #rendered h4, #rendered h5, #rendered h6 {
+						color: #cbd5e1; /* Slate 300 */
 					}
 				</style>
 				<div class="px-6" x-html="md.render(content)" id="rendered"></div>
@@ -205,6 +211,6 @@
 			"(file) => {let newFile = prompt('Rename ' + file.slice($store.dir.value.length + 1) + ' (Or leave empty to cancel)'); if(newFile != '') {renameFile(file, $store.dir.value + '/' + newFile)} }",
 			"(file) => {if(confirm('Delete ' + file.slice($store.dir.value.length + 1) + '?')) deleteFile(file)}"
 		) }}
-		{{ overlay("changed", "selectedFile != null ? selectedFile.slice($store.dir.value.length + 1) : ''") }}
+		{{ overlay("changed", "selectedFile != null ? selectedFile.slice($store.dir.value.length + 1) : ''", "wordCount") }}
 	</div>
 </body>
