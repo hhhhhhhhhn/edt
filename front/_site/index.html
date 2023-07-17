@@ -190,7 +190,13 @@
 				@mousedown="grabbing=true"
 				@mouseup.window="grabbing=false"
 			></div>
-			<div class="bg-slate-700 overflow-x-hidden overflow-y-auto noscrollbar" :style="`width: ${100 - width}vw`" class="min-w-0">
+			<div 
+				class="bg-slate-700 overflow-x-hidden overflow-y-auto noscrollbar min-w-0"
+				:style="`width: ${100 - width}vw`"
+				x-data="{onBottom: false}"
+				@scroll="onBottom = $event.target.scrollTop >= $event.target.scrollHeight - $event.target.clientHeight - 5"
+				x-effect="content; if(onBottom) setTimeout(() => {$el.scrollTop = $el.scrollHeight}, 10)"
+			>
 				<style type="text/css" scoped>
 					#rendered * {
 						all: revert;
