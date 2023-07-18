@@ -10,8 +10,12 @@
 	<script>
 		document.addEventListener("alpine:init", () => {
 			Alpine.store("dir", {
-				init() {
+				async init() {
 					this.value = localStorage.getItem("dir") || null
+					while (!this.value) {
+						alert("Please select a directory.")
+						await this.askForDir()
+					}
 				},
 				value: null,
 				async askForDir() {
