@@ -6,7 +6,7 @@
 	<script src="https://cdn.tailwindcss.com"></script>
 	<script src="/app/assets/deps/markdown-it.min.js"></script>
 	<script src="/app/assets/deps/markdown-it-math.min.js"></script>
-	<title>Front</title>
+	<title>edt</title>
 	<script>
 		document.addEventListener("alpine:init", () => {
 			Alpine.store("dir", {
@@ -29,16 +29,9 @@
 		const md = markdownit().use(markdownitMath)
 	</script>
 	<script>
-		async function setUpReload() {
-			let versionNumber = await (await fetch("/app/version")).text()
-			setInterval(async () => {
-				let newVersion = await (await fetch("/app/version")).text()
-				if (newVersion !== versionNumber) {
-					location.reload()
-				}
-			}, 200)
-		}
-		// setUpReload()
+		setInterval(() => {
+			fetch("/keepalive")
+		}, 5000)
 
 		// -> Promise<string|null>
 		async function selectDir() {
@@ -165,9 +158,22 @@
 	</style>
 </head>
 <body class="overflow-hidden h-screen"><div 
-	    x-data="{selectedFile: null, content: '', changed: false, wordCount: 0}"
-		x-effect="content = ((await readFile(selectedFile || '')) || '').slice(0, -1)" 
-		x-init="window.addEventListener('beforeunload', (e) => {if (!$data.changed) return; e.returnValue = 'Unsaved changes!'; return 'Unsaved changes!'})"
+	    x-data="{
+          selectedFile: null,
+          content: '',
+          changed: false,
+          wordCount: 0,
+          changeFile(file) {
+              if (this.changed && !confirm('You have unsaved changes. Are you sure you want to continue?')) {
+                  return
+              }
+              this.selectedFile = file;
+              this.changed = false;
+              document.getElementById('textarea').focus()
+          },
+      }"
+		  x-effect="content = ((await readFile(selectedFile || '')) || '').slice(0, -1)"
+		  x-init="window.addEventListener('beforeunload', (e) => {if (!$data.changed) return; e.returnValue = 'Unsaved changes!'; return 'Unsaved changes!'})"
 	>
 		<div x-effect="wordCount = content.split(/[\s,\.:;\-_#\\]+/).filter(Boolean).length"></div>
 		<div 
@@ -191,7 +197,7 @@
 				@mouseup.window="grabbing=false"
 			></div>
 			<div 
-				class="bg-slate-700 overflow-x-hidden overflow-y-auto noscrollbar min-w-0"
+				class="bg-slate-700 overflow-x-hidden overflow-y-auto noscrollbar min-w-0 pb-6"
 				:style="`width: ${100 - width}vw`"
 				x-data="{onBottom: false}"
 				@scroll="onBottom = $event.target.scrollTop >= $event.target.scrollHeight - $event.target.clientHeight - 5"
@@ -218,10 +224,10 @@
 		query: '',
 		openfile(file) {
 			if(file.trim() == $store.dir.value + '/New File...') {
-				((file) =&gt; {selectedFile = file; changed = false; document.getElementById(&#39;textarea&#39;).focus()})($store.dir.value + '/' + this.query)
+				((file) =&gt; changeFile(file))($store.dir.value + '/' + this.query)
 			} 
 			else {
-				((file) =&gt; {selectedFile = file; changed = false; document.getElementById(&#39;textarea&#39;).focus()})(file)
+				((file) =&gt; changeFile(file))(file)
 			}
 		},
 		matching: [],

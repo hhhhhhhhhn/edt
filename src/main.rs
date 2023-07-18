@@ -1,4 +1,5 @@
 #[macro_use] extern crate rocket;
+#[macro_use] extern crate lazy_static;
 use std::path::{Path, PathBuf};
 use rocket::fs::NamedFile;
 use rocket::http::{Status, ContentType};
@@ -8,9 +9,13 @@ use include_dir::{include_dir, Dir};
 use std::borrow::Cow;
 use std::fs::File;
 use std::fs;
+use rocket::tokio;
+use std::process::Command;
 use std::io::prelude::*;
+use std::time;
 use anyhow::Result;
 use rfd::FileDialog;
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Serialize)]
 #[serde(tag = "type", content = "value")]
@@ -86,8 +91,43 @@ async fn writefile(file: PathBuf, data: String) -> Status {
     }
 }
 
-#[launch]
-fn rocket() -> _ {
-    println!("{:?}", read_dir(PathBuf::from("/home/persona/Notes/Old/2022")).unwrap());
-    rocket::build().mount("/", routes![app, readfile, writefile, selectdir, readdir, deletefile])
+#[get("/keepalive")]
+async fn keepalive() {
+    *Arc::clone(&LAST_PING).lock().unwrap() =
+        time::SystemTime::now().duration_since(time::UNIX_EPOCH).unwrap().as_secs();
+}
+
+lazy_static! {
+    static ref LAST_PING: Arc<Mutex<u64>> = Arc::new(Mutex::new(0));
+}
+
+#[rocket::main]
+async fn main() -> Result<()> {
+    Command::new("sh")
+        .arg("-c")
+        .arg("$BROWSER --app='http://localhost:8000/app/index.html'")
+        .spawn()
+        .expect("Failed to spawn browser");
+
+    let rocket = rocket::build()
+        .mount("/", routes![app, readfile, writefile, selectdir, readdir, deletefile, keepalive])
+        .ignite()
+        .await?;
+    let shutdown = rocket.shutdown();
+
+    tokio::spawn(async move {
+        tokio::time::sleep(tokio::time::Duration::from_secs(20)).await;
+        loop {
+            tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+            let time = time::SystemTime::now().duration_since(time::UNIX_EPOCH).unwrap().as_secs();
+            let since_last = time - *Arc::clone(&LAST_PING).lock().unwrap();
+            if since_last > 30 {
+                break
+            }
+        }
+        shutdown.notify();
+    });
+    rocket.launch().await?;
+
+    return Ok(())
 }
