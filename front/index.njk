@@ -146,6 +146,18 @@
 		function simplify(str) {
 			return str.toLowerCase().normalize("NFD").replace(/[^a-z]/g, "")
 		}
+
+		// string, string -> string
+		function relativeTo(path, relativeTo) {
+			let dir = relativeTo.split('/').slice(0, -1)
+			let file = path.split('/').filter((x) => {
+				if (x == "..") {
+					dir.pop()
+				}
+				return x != "." && x != ".."
+			})
+			return dir.concat(...file).join('/')
+		}
 	</script>
 	<style type="text/css">
 		.noscrollbar {
@@ -174,7 +186,7 @@
               this.changed = false;
               document.getElementById('textarea').focus()
           },
-      }"
+        }"
 		  x-effect="content = ((await readFile(selectedFile || '')) || '').slice(0, -1)"
 		  x-init="window.addEventListener('beforeunload', (e) => {if (!$data.changed) return; e.returnValue = 'Unsaved changes!'; return 'Unsaved changes!'})"
 	>
@@ -205,6 +217,11 @@
 				x-data="{onBottom: false}"
 				@scroll="onBottom = $event.target.scrollTop >= $event.target.scrollHeight - $event.target.clientHeight - 5"
 				x-effect="content; if(onBottom) setTimeout(() => {$el.scrollTop = $el.scrollHeight}, 10)"
+				@click="if ($event.target.tagName == 'A' && $event.target.attributes.href.value.startsWith('.')) {
+							let file = relativeTo($event.target.attributes.href.value, selectedFile)
+							changeFile(file)
+							$event.preventDefault();
+						}"
 			>
 				<style type="text/css" scoped>
 					#rendered * {

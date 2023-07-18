@@ -1,5 +1,4 @@
 # Todo
-- Make relative links work
 - Autocomplete
 - Changed current file on rename
 
@@ -9,3 +8,4 @@
 - Package
 - Prompt for unsaved changes on opening another file
 - Close the server without a client
+- Make relative links work
