@@ -2,10 +2,11 @@
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<script src="//unpkg.com/alpinejs" defer></script>
-	<script src="https://cdn.tailwindcss.com"></script>
-	<script src="/app/assets/deps/markdown-it.min.js"></script>
-	<script src="/app/assets/deps/markdown-it-math.min.js"></script>
+	<script src="./assets/deps/tailwind.js"></script>
+	<script src="./assets/deps/alpine.js" defer></script>
+	<script src="./assets/deps/markdown-it.min.js"></script>
+	<script src="./assets/deps/markdown-it-math.min.js"></script>
+	<script id="MathJax-script" async src="./assets/deps/mathjax/tex-mml-chtml.js"></script>
 	<title>edt</title>
 	<script>
 		document.addEventListener("alpine:init", () => {
@@ -158,6 +159,16 @@
 			})
 			return dir.concat(...file).join('/')
 		}
+
+		let renderTimeout = null
+		function render(element, content) {
+			let time = content.length > 5000 ? 200 : 0
+			clearTimeout(renderTimeout)
+			renderTimeout = setTimeout(() => {
+				element.innerHTML = md.render(content)
+				MathJax.typesetPromise()
+			}, time)
+		}
 	</script>
 	<style type="text/css">
 		.noscrollbar {
@@ -221,15 +232,18 @@
 						}"
 			>
 				<style type="text/css" scoped>
-					#rendered * {
-						all: revert;
+					#rendered {
+						color: #94a3b8; /* Slate 500 */
+					}
+					#rendered p, h1, h2, h3, h4, h5, h6, a, i, b, strong, em, code, img, table, tr, th, td, svg {
+						all: revert; /* reverts tailwind */
 						color: #94a3b8; /* Slate 500 */
 					}
 					#rendered h1, #rendered h2, #rendered h3, #rendered h4, #rendered h5, #rendered h6 {
 						color: #cbd5e1; /* Slate 300 */
 					}
 				</style>
-				<div class="px-6" x-html="md.render(content)" id="rendered"></div>
+				<div class="px-6" x-effect="render($el, content)" id="rendered"></div>
 			</div>
 		</div>
 		

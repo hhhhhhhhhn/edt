@@ -1,0 +1,16 @@
+/*
+ * Skypack CDN - twind@0.16.19
+ *
+ * Learn more:
+ *   📙 Package Documentation: https://www.skypack.dev/view/twind
+ *   📘 Skypack Documentation: https://www.skypack.dev/docs
+ *
+ * Pinned URL: (Optimized for Production)
+ *   ▶️ Normal: https://cdn.skypack.dev/pin/twind@v0.16.19-CaNDOlA4Nfo7ponDzANK/mode=imports/optimized/twind/shim.js
+ *   ⏩ Minified: https://cdn.skypack.dev/pin/twind@v0.16.19-CaNDOlA4Nfo7ponDzANK/mode=imports,min/optimized/twind/shim.js
+ *
+ */
+
+// Browser-Optimized Imports (Don't directly import the URLs below in your application!)
+export * from '/-/twind@v0.16.19-CaNDOlA4Nfo7ponDzANK/dist=es2019,mode=imports/optimized/twind/shim.js';
+export {default} from '/-/twind@v0.16.19-CaNDOlA4Nfo7ponDzANK/dist=es2019,mode=imports/optimized/twind/shim.js';
