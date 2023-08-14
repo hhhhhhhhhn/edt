@@ -33,10 +33,6 @@
 		const md = markdownit().use(markdownitMath)
 	</script>
 	<script>
-		setInterval(() => {
-			fetch("/keepalive")
-		}, 5000)
-
 		// -> Promise<string|null>
 		async function selectDir() {
 			try {
